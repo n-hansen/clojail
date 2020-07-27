@@ -2,8 +2,10 @@
   "A set of predefined testers that you can use in your own sandboxes.
    I'm not promising that any of these are really totally secure. I cannot
    possibly test these for everything."
-  (:require [bultitude.core :as nses]
-            [serializable.fn :as sfn]))
+  (:require [serializable.fn :as sfn]
+            [clojure.tools.namespace.find :as nses]
+            [clojure.java.classpath :as classpath]
+            [clojure.string :as string]))
 
 (deftype ClojailWrapper [object])
 
@@ -69,7 +71,13 @@
   the prefixes with bultitude, getting a list of all namespaces on
   the classpath matching those prefixes."
   [& prefixes]
-  (blacklist-nses (mapcat (partial nses/namespaces-on-classpath :prefix) prefixes)))
+  (let [all-nses (-> (classpath/classpath)
+                     (nses/find-namespaces)
+                     (vec))]
+    (blacklist-nses (mapcat (fn [prefix]
+                              (filter #(-> (name %) (string/starts-with? prefix))
+                                      all-nses))
+                            prefixes))))
 
 (def ^{:doc "A tester that attempts to be secure, and allows def."}
   secure-tester-without-def
